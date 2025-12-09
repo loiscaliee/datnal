@@ -1,41 +1,48 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import joblib
+import numpy as np
 
-# LOAD MODEL MOVING AVERAGE
-@st.cache_resource
-def load_model():
-    model_obj = joblib.load("best_model_bbca.joblib")
-    return model_obj
+st.title("📈 IDX Forecasting — Moving Average Model (BBCA)")
 
-model_obj = load_model()
+# ================================
+# LOAD MODEL .joblib
+# ================================
+model_data = joblib.load("best_model_bbca.joblib")
 
-window_size = model_obj["window_size"]
-last_values = model_obj["last_values"]
+st.subheader("🔍 Model Loaded dari .joblib")
+st.json(model_data)
 
-st.title("📈 Stock Forecasting – Moving Average Model")
+# ================================
+# INPUT: Harga Close Hari Ini
+# ================================
+harga_hari_ini = st.number_input("Harga Close Hari Ini", value=0.0)
 
-st.write(f"""
-Aplikasi ini menggunakan **Moving Average** dengan Window Size = **{window_size}**  
-Model menghitung prediksi harga berikutnya berdasarkan rata-rata dari {window_size} data terakhir.
-""")
+# Tombol Prediksi
+if st.button("PREDIKSI HARGA BESOK"):
+    
+    model_type = model_data["model_type"]
 
-# INPUT USER
-st.subheader(f"Masukkan {window_size} harga penutupan terakhir:")
+    # ================================
+    #        MODEL MOVING AVERAGE
+    # ================================
+    if model_type == "moving_average":
+        
+        window_size = model_data["window_size"]
+        last_values = np.array(model_data["last_values"])  # array harga terakhir dalam model
 
-user_inputs = []
+        # Tambahkan harga hari ini ke window
+        updated_window = np.append(last_values, harga_hari_ini)
 
-for i in range(window_size):
-    val = st.number_input(f"Harga ke-{i+1}", value=float(last_values[i]))
-    user_inputs.append(val)
+        # Ambil window_size terakhir saja
+        updated_window = updated_window[-window_size:]
 
-user_inputs = np.array(user_inputs)
+        # Moving average → prediksi harga besok
+        prediksi = updated_window.mean()
 
-st.write("### Data yang digunakan:")
-st.write(user_inputs)
+        st.success("📌 Model: Moving Average (MA)")
+        st.write(f"Window Size: {window_size}")
+        st.write(f"Data Window terbaru: {updated_window}")
+        st.write(f"📊 Prediksi harga besok: **{prediksi:.2f}**")
 
-# PREDICT
-if st.button("Predict"):
-    prediction = np.mean(user_inputs)
-    st.success(f"📊 **Prediksi Harga Berikutnya: {prediction:,.4f}**")
+    else:
+        st.error("Model tidak dikenali.")
